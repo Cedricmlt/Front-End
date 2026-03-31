@@ -16,6 +16,9 @@ const PublicationCard = ({
   id_PublicationOwner,
   cree_le,
 }) => {
+  const profilePic =
+    pastilleUrl ||
+    `https://ui-avatars.com/api/?name=${encodeURIComponent(pseudo)}&background=374761&color=fff`;
   // Etats
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isLiked, setIsLiked] = useState(false);
@@ -30,6 +33,33 @@ const PublicationCard = ({
   const [followedUsers, setFollowedUsers] = useState([]);
   const [timeAgo, setTimeAgo] = useState("");
   const [showOptionsModal, setShowOptionsModal] = useState(false);
+  const [publicationTags, setPublicationTags] = useState([]);
+
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editDescription, setEditDescription] = useState("");
+  const [editFiles, setEditFiles] = useState([]);
+  const [editPreviews, setEditPreviews] = useState([]);
+  const [editUrlInput, setEditUrlInput] = useState("");
+  const [editUrls, setEditUrls] = useState([]);
+  const [editTagInput, setEditTagInput] = useState("");
+  const [editTags, setEditTags] = useState([]);
+  const [editError, setEditError] = useState(null);
+  const [editSuccess, setEditSuccess] = useState(null);
+  const [editIsLoading, setEditIsLoading] = useState(false);
+
+  // Fermeture des modales avec la touche Échap
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        setShowOptionsModal(false);
+        setShowComments(false);
+        setShowLikers(false);
+        setShowEditModal(false);
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   const formatTimeAgo = (dateString) => {
     const now = new Date();
@@ -74,6 +104,15 @@ const PublicationCard = ({
     }
   }, [cree_le]);
 
+  // Génère les aperçus des nouveaux fichiers sélectionnés dans la modale d'édition
+  useEffect(() => {
+    const objectUrls = Array.from(editFiles).map((file) =>
+      URL.createObjectURL(file),
+    );
+    setEditPreviews(objectUrls);
+    return () => objectUrls.forEach((url) => URL.revokeObjectURL(url));
+  }, [editFiles]);
+
   const fetchComments = async () => {
     try {
       const response = await axios.get(
@@ -82,6 +121,23 @@ const PublicationCard = ({
       setComments(response.data.comments);
     } catch (error) {
       console.error("Erreur lors de la récupération des commentaires :", error);
+    }
+  };
+
+  const fetchTags = async () => {
+    try {
+      const response = await axios.get(
+        `http://localhost:3000/api/publication-tags`,
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        },
+      );
+      const filtered = response.data.publicationsTags.filter(
+        (t) => Number(t.publication_Id) === Number(id_Publication),
+      );
+      setPublicationTags(filtered);
+    } catch (error) {
+      console.error("Erreur lors de la récupération des tags :", error);
     }
   };
 
@@ -144,6 +200,7 @@ const PublicationCard = ({
       await fetchLikeStatusAndCount();
       await fetchFollowedUsers();
       await fetchComments();
+      await fetchTags();
     };
     fetchInitialData();
   }, [id_Users, id_Publication]);
@@ -299,18 +356,209 @@ const PublicationCard = ({
 
   const handleDeletePublication = async () => {
     try {
+      const headers = {
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      };
+
+      //  Supprimer les médias
+      const mediasResponse = await axios.get(
+        `http://localhost:3000/api/media-publication/publication/${id_Publication}`,
+        { headers },
+      );
+      for (const media of mediasResponse.data.medias) {
+        await axios.delete(
+          `http://localhost:3000/api/media-publication/${media.id_Media}`,
+          { headers },
+        );
+      }
+
+      //  Supprimer les commentaires
+      const commentsResponse = await axios.get(
+        `http://localhost:3000/api/user-publication-comment/publication/${id_Publication}`,
+      );
+      for (const comment of commentsResponse.data.comments) {
+        await axios.delete(
+          `http://localhost:3000/api/user-publication-comment/${comment.id_comment}`,
+          { headers },
+        );
+      }
+
+      //  Supprimer les likes
+      const likersResponse = await axios.get(
+        `http://localhost:3000/api/user-publication-like/likers/${id_Publication}`,
+        { headers },
+      );
+      for (const liker of likersResponse.data.likers) {
+        await axios.delete(
+          `http://localhost:3000/api/user-publication-like/${liker.id_Users}/${id_Publication}`,
+          { headers },
+        );
+      }
+
+      //  Supprimer les tags liés
+      const allTagsResponse = await axios.get(
+        `http://localhost:3000/api/publication-tags`,
+        { headers },
+      );
+      const publicationTags = allTagsResponse.data.publicationsTags.filter(
+        (t) => t.publication_Id === id_Publication,
+      );
+      for (const tag of publicationTags) {
+        await axios.delete(
+          `http://localhost:3000/api/publication-tags/${id_Publication}/${tag.tag_Id}`,
+          { headers },
+        );
+      }
+
+      // Supprimer la publication
       await axios.delete(
         `http://localhost:3000/api/publication/${id_Publication}`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        },
+        { headers },
       );
-      // Rafraîchir la liste des publications après la suppression
+
       window.location.reload();
     } catch (error) {
       console.error("Erreur lors de la suppression de la publication :", error);
+    }
+  };
+
+  // ─── Ouverture de la modale d'édition (pré-remplissage) ──────────────────────
+  const handleOpenEditModal = () => {
+    setEditDescription(description);
+    setEditFiles([]);
+    setEditPreviews([]);
+    setEditUrlInput("");
+    setEditUrls([]);
+    setEditTagInput("");
+    setEditTags([]);
+    setEditError(null);
+    setEditSuccess(null);
+    setShowOptionsModal(false);
+    setShowEditModal(true);
+  };
+
+  // ─── Gestion des URLs ─────────────────────────────────────────────────────────
+  const handleEditAddUrl = () => {
+    if (!editUrlInput.trim()) return;
+    setEditUrls([...editUrls, editUrlInput.trim()]);
+    setEditUrlInput("");
+  };
+
+  const handleEditRemoveUrl = (index) => {
+    setEditUrls(editUrls.filter((_, i) => i !== index));
+  };
+
+  // ─── Gestion des tags ─────────────────────────────────────────────────────────
+  const handleEditAddTag = () => {
+    const tag = editTagInput.trim().replace(/^#/, "");
+    if (!tag || editTags.includes(tag)) return;
+    setEditTags([...editTags, tag]);
+    setEditTagInput("");
+  };
+
+  const handleEditRemoveTag = (index) => {
+    setEditTags(editTags.filter((_, i) => i !== index));
+  };
+
+  const handleEditSubmit = async () => {
+    if (!editDescription.trim()) {
+      setEditError("La description est obligatoire.");
+      return;
+    }
+
+    setEditIsLoading(true);
+    setEditError(null);
+
+    try {
+      const token = localStorage.getItem("token");
+      const headers = { Authorization: `Bearer ${token}` };
+
+      await axios.put(
+        `http://localhost:3000/api/publication/${id_Publication}`,
+        { description: editDescription },
+        { headers },
+      );
+
+      if (editFiles.length > 0 || editUrls.length > 0) {
+        // Récupération des anciens médias
+        const mediasResponse = await axios.get(
+          `http://localhost:3000/api/media-publication/publication/${id_Publication}`,
+          { headers },
+        );
+
+        // Suppression un par un
+        for (const media of mediasResponse.data.medias) {
+          await axios.delete(
+            `http://localhost:3000/api/media-publication/${media.id_Media}`,
+            { headers },
+          );
+        }
+
+        // Ajout des nouveaux médias
+        const formData = new FormData();
+        formData.append("publication_Id", id_Publication);
+        Array.from(editFiles).forEach((file) =>
+          formData.append("images", file),
+        );
+        editUrls.forEach((url) => formData.append("urls", url));
+
+        await axios.post(
+          "http://localhost:3000/api/media-publication",
+          formData,
+          { headers: { ...headers, "Content-Type": "multipart/form-data" } },
+        );
+      }
+
+      for (const tag of publicationTags) {
+        await axios.delete(
+          `http://localhost:3000/api/publication-tags/${id_Publication}/${tag.tag_Id}`,
+          { headers },
+        );
+      }
+
+      for (const label of editTags) {
+        try {
+          let tag_Id;
+          try {
+            const tagRes = await axios.post(
+              "http://localhost:3000/api/tags",
+              { label },
+              { headers },
+            );
+            tag_Id = tagRes.data.addTag;
+          } catch (err) {
+            if (err.response?.status === 409) {
+              const allTags = await axios.get(
+                "http://localhost:3000/api/tags",
+                { headers },
+              );
+              const found = allTags.data.tags.find((t) => t.label === label);
+              tag_Id = found?.id_Tag;
+            }
+          }
+
+          if (tag_Id) {
+            await axios.post(
+              "http://localhost:3000/api/publication-tags",
+              { publication_Id: id_Publication, tag_Id },
+              { headers },
+            );
+          }
+        } catch (err) {
+          console.error("Erreur tag :", err);
+        }
+      }
+
+      setEditSuccess("Publication modifiée avec succès ! ✅");
+      setTimeout(() => {
+        setShowEditModal(false);
+        window.location.reload();
+      }, 1500);
+    } catch (err) {
+      console.error(err);
+      setEditError("Une erreur est survenue lors de la modification.");
+    } finally {
+      setEditIsLoading(false);
     }
   };
 
@@ -320,8 +568,7 @@ const PublicationCard = ({
       style={{
         display: "flex",
         flexDirection: "column",
-        width: "470px",
-
+        width: "min(470px, 95vw)",
         margin: "0 auto",
         paddingTop: "90px",
       }}
@@ -349,7 +596,7 @@ const PublicationCard = ({
           }}
         >
           <img
-            src={pastilleUrl}
+            src={profilePic}
             style={{
               width: "60px",
               height: "60px",
@@ -358,7 +605,9 @@ const PublicationCard = ({
             }}
             alt="Un utilisateur portant un costume."
           />
-          <span id="PseudoUserCard">{pseudo}</span>
+          <span id="PseudoUserCard" style={{ whiteSpace: "nowrap" }}>
+            {pseudo}
+          </span>
         </div>
 
         <div
@@ -393,6 +642,12 @@ const PublicationCard = ({
         {/* Réglage du style des 3 points ... */}
         <IoIosMore
           onClick={() => setShowOptionsModal(true)}
+          role="button"
+          tabIndex={0}
+          aria-label="Options de la publication"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") setShowOptionsModal(true);
+          }}
           style={{
             width: "30px",
             height: "50px",
@@ -406,13 +661,15 @@ const PublicationCard = ({
       <div style={{ position: "relative" }}>
         <img
           src={carouselImages[currentIndex]}
+          alt={`Image ${currentIndex + 1} sur ${carouselImages.length}`}
           style={{
             width: "470px",
-            height: "350px",
+            height: "clamp(200px, 40vw, 350px)",
             objectFit: "cover",
             objectPosition: "center 35%",
           }}
         />
+
         {/* Bouton gauche */}
         <button
           onClick={handlePrev}
@@ -496,7 +753,16 @@ const PublicationCard = ({
             zIndex: 10,
           }}
         >
-          <div onClick={handleLike} style={{ cursor: "pointer" }}>
+          <div
+            onClick={handleLike}
+            role="button"
+            tabIndex={0}
+            aria-label={isLiked ? "Ne plus aimer" : "Aimer"}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") handleLike();
+            }}
+            style={{ cursor: "pointer" }}
+          >
             {isLiked ? (
               <FaHeart
                 style={{
@@ -523,6 +789,15 @@ const PublicationCard = ({
               setShowComments(!showComments);
               if (!showComments) fetchComments();
             }}
+            role="button"
+            tabIndex={0}
+            aria-label="Voir les commentaires"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                setShowComments(!showComments);
+                if (!showComments) fetchComments();
+              }
+            }}
             style={{
               width: "30px",
               height: "35px",
@@ -541,7 +816,7 @@ const PublicationCard = ({
           }}
         >
           <img
-            src={pastilleUrl}
+            src={profilePic}
             style={{
               width: "30px",
               height: "30px",
@@ -578,6 +853,34 @@ const PublicationCard = ({
         <p id="RefCommentCard">
           <strong>{pseudo}</strong> {description}
         </p>
+
+        {/* Tags */}
+        {publicationTags.length > 0 && (
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: "8px",
+              paddingLeft: "20px",
+              paddingBottom: "10px",
+            }}
+          >
+            {publicationTags.map((tag, i) => (
+              <span
+                key={i}
+                style={{
+                  backgroundColor: "#374761",
+                  padding: "4px 10px",
+                  borderRadius: "20px",
+                  fontSize: "13px",
+                  color: "#FFFFFF",
+                }}
+              >
+                #{tag.label.replace(/^#/, "")}
+              </span>
+            ))}
+          </div>
+        )}
         <span
           id="RefViewCommentCard"
           onClick={() => {
@@ -608,6 +911,9 @@ const PublicationCard = ({
           >
             <div
               onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Mentions J'aime"
               style={{
                 position: "relative",
                 width: "400px",
@@ -677,7 +983,7 @@ const PublicationCard = ({
                         }}
                       >
                         <img
-                          src={pastilleUrl}
+                          src={liker.photo_profil}
                           style={{
                             width: "40px",
                             height: "40px",
@@ -737,10 +1043,14 @@ const PublicationCard = ({
           >
             <div
               onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Commentaires"
               style={{
                 display: "flex",
-                width: "900px",
-                height: "600px",
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+                width: "min(900px, 95vw)",
+                height: window.innerWidth < 768 ? "90vh" : "600px",
                 borderRadius: "10px",
                 overflow: "hidden",
                 backgroundColor: "#232F46",
@@ -767,7 +1077,8 @@ const PublicationCard = ({
               <div
                 style={{
                   position: "relative",
-                  width: "55%",
+                  width: window.innerWidth < 768 ? "100%" : "55%",
+                  height: window.innerWidth < 768 ? "250px" : "auto",
                   backgroundColor: "#000",
                 }}
               >
@@ -777,6 +1088,7 @@ const PublicationCard = ({
                 />
                 <button
                   onClick={handlePrev}
+                  aria-label="Image précédente"
                   style={{
                     position: "absolute",
                     left: "10px",
@@ -796,6 +1108,7 @@ const PublicationCard = ({
                 </button>
                 <button
                   onClick={handleNext}
+                  aria-label="Image suivante"
                   style={{
                     position: "absolute",
                     right: "10px",
@@ -843,10 +1156,15 @@ const PublicationCard = ({
               {/* Partie droite — Commentaires */}
               <div
                 style={{
-                  width: "45%",
+                  width: window.innerWidth < 768 ? "100%" : "45%",
                   display: "flex",
                   flexDirection: "column",
-                  borderLeft: "1px solid #374761",
+                  borderLeft:
+                    window.innerWidth < 768 ? "none" : "1px solid #374761",
+                  borderTop:
+                    window.innerWidth < 768 ? "1px solid #374761" : "none",
+                  flex: 1,
+                  minHeight: 0,
                 }}
               >
                 {/* Header */}
@@ -860,7 +1178,7 @@ const PublicationCard = ({
                   }}
                 >
                   <img
-                    src={pastilleUrl}
+                    src={profilePic}
                     style={{
                       width: "40px",
                       height: "40px",
@@ -906,7 +1224,7 @@ const PublicationCard = ({
                         }}
                       >
                         <img
-                          src={pastilleUrl}
+                          src={comment.photo_profil}
                           style={{
                             width: "32px",
                             height: "32px",
@@ -1106,6 +1424,9 @@ const PublicationCard = ({
           >
             <div
               onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Options de la publication"
               style={{
                 width: "300px",
                 borderRadius: "10px",
@@ -1118,11 +1439,7 @@ const PublicationCard = ({
             >
               {/* Option Modifier */}
               <button
-                onClick={() => {
-                  setShowOptionsModal(false);
-                  // Logique pour modifier la publication
-                  alert("Fonctionnalité de modification à implémenter");
-                }}
+                onClick={handleOpenEditModal}
                 style={{
                   padding: "10px",
                   border: "none",
@@ -1174,6 +1491,325 @@ const PublicationCard = ({
               >
                 Annuler
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* ─── Modale : Modifier la publication ───────────────────────────────── */}
+        {showEditModal && (
+          <div
+            onClick={() => setShowEditModal(false)}
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              width: "100vw",
+              height: "100vh",
+              backgroundColor: "rgba(0, 0, 0, 0.8)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1000,
+            }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Modifier la publication"
+              style={{
+                width: "500px",
+                maxHeight: "90vh",
+                overflowY: "auto",
+                backgroundColor: "#232F46",
+                borderRadius: "12px",
+                padding: "30px",
+                color: "#FFFFFF",
+              }}
+            >
+              <h4 style={{ marginBottom: "25px", textAlign: "center" }}>
+                Modifier la publication
+              </h4>
+
+              {editError && (
+                <p style={{ color: "#FF5555", marginBottom: "15px" }}>
+                  {editError}
+                </p>
+              )}
+              {editSuccess && (
+                <p style={{ color: "#55FF88", marginBottom: "15px" }}>
+                  {editSuccess}
+                </p>
+              )}
+
+              {/* Description */}
+              <div style={{ marginBottom: "20px" }}>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "8px",
+                    fontWeight: "bold",
+                  }}
+                >
+                  Description *
+                </label>
+                <textarea
+                  rows={4}
+                  placeholder="Décrivez votre publication..."
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "10px",
+                    borderRadius: "8px",
+                    border: "none",
+                    backgroundColor: "#1a2538",
+                    color: "#FFFFFF",
+                    resize: "vertical",
+                    fontFamily: "inherit",
+                    boxSizing: "border-box",
+                  }}
+                />
+              </div>
+
+              {/* Upload fichiers */}
+              <div style={{ marginBottom: "20px" }}>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "8px",
+                    fontWeight: "bold",
+                  }}
+                >
+                  Images depuis l'ordinateur
+                </label>
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={(e) => setEditFiles(e.target.files)}
+                  style={{ color: "#FFFFFF" }}
+                />
+                {editPreviews.length > 0 && (
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: "8px",
+                      flexWrap: "wrap",
+                      marginTop: "10px",
+                    }}
+                  >
+                    {editPreviews.map((src, i) => (
+                      <img
+                        key={i}
+                        src={src}
+                        alt=""
+                        style={{
+                          width: "80px",
+                          height: "80px",
+                          objectFit: "cover",
+                          borderRadius: "6px",
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* URLs d'images */}
+              <div style={{ marginBottom: "20px" }}>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "8px",
+                    fontWeight: "bold",
+                  }}
+                >
+                  Images via URL
+                </label>
+                <div style={{ display: "flex", gap: "8px" }}>
+                  <input
+                    type="text"
+                    placeholder="https://exemple.com/image.jpg"
+                    value={editUrlInput}
+                    onChange={(e) => setEditUrlInput(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleEditAddUrl()}
+                    style={{
+                      flex: 1,
+                      padding: "8px 12px",
+                      borderRadius: "8px",
+                      border: "none",
+                      backgroundColor: "#1a2538",
+                      color: "#FFFFFF",
+                    }}
+                  />
+                  <button
+                    onClick={handleEditAddUrl}
+                    style={{
+                      padding: "8px 15px",
+                      borderRadius: "8px",
+                      border: "none",
+                      backgroundColor: "#4a90e2",
+                      color: "#FFFFFF",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Ajouter
+                  </button>
+                </div>
+                {editUrls.map((url, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginTop: "6px",
+                      backgroundColor: "#1a2538",
+                      padding: "6px 10px",
+                      borderRadius: "6px",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: "13px",
+                        color: "#aaa",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        maxWidth: "380px",
+                      }}
+                    >
+                      {url}
+                    </span>
+                    <button
+                      onClick={() => handleEditRemoveUrl(i)}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        color: "#FF5555",
+                        cursor: "pointer",
+                        fontSize: "16px",
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              {/* Tags */}
+              <div style={{ marginBottom: "25px" }}>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "8px",
+                    fontWeight: "bold",
+                  }}
+                >
+                  Tags
+                </label>
+                <div style={{ display: "flex", gap: "8px" }}>
+                  <input
+                    type="text"
+                    placeholder="#JeuVideo, #Cosplay..."
+                    value={editTagInput}
+                    onChange={(e) => setEditTagInput(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleEditAddTag()}
+                    style={{
+                      flex: 1,
+                      padding: "8px 12px",
+                      borderRadius: "8px",
+                      border: "none",
+                      backgroundColor: "#1a2538",
+                      color: "#FFFFFF",
+                    }}
+                  />
+                  <button
+                    onClick={handleEditAddTag}
+                    style={{
+                      padding: "8px 15px",
+                      borderRadius: "8px",
+                      border: "none",
+                      backgroundColor: "#4a90e2",
+                      color: "#FFFFFF",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Ajouter
+                  </button>
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: "8px",
+                    marginTop: "10px",
+                  }}
+                >
+                  {editTags.map((tag, i) => (
+                    <span
+                      key={i}
+                      style={{
+                        backgroundColor: "#374761",
+                        padding: "4px 10px",
+                        borderRadius: "20px",
+                        fontSize: "13px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                      }}
+                    >
+                      #{tag}
+                      <button
+                        onClick={() => handleEditRemoveTag(i)}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          color: "#FF5555",
+                          cursor: "pointer",
+                          fontSize: "14px",
+                          padding: 0,
+                        }}
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Boutons */}
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <button
+                  onClick={() => setShowEditModal(false)}
+                  style={{
+                    padding: "10px 25px",
+                    borderRadius: "25px",
+                    border: "none",
+                    backgroundColor: "#374761",
+                    color: "#FFFFFF",
+                    cursor: "pointer",
+                  }}
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={handleEditSubmit}
+                  disabled={editIsLoading}
+                  style={{
+                    padding: "10px 25px",
+                    borderRadius: "25px",
+                    border: "none",
+                    backgroundColor: "#4a90e2",
+                    color: "#FFFFFF",
+                    cursor: "pointer",
+                    opacity: editIsLoading ? 0.7 : 1,
+                  }}
+                >
+                  {editIsLoading ? "Modification en cours..." : "Modifier"}
+                </button>
+              </div>
             </div>
           </div>
         )}

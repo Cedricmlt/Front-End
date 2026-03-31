@@ -21,10 +21,22 @@ const Footer = () => {
               <a href="/contact">Contact</a>
             </li>
             <li>
-              <a href="/confidentialité">Confidentialité</a>
+              <a
+                href="/RGPD_CosShare.pdf"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Confidentialité
+              </a>
             </li>
             <li>
-              <a href="/conditions d'utilisations">Conditions d'utilisations</a>
+              <a
+                href="/CGU_CosShare.pdf"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Conditions d'utilisations
+              </a>
             </li>
             <li>
               <a href="/faq">FAQ</a>

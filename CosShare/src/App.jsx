@@ -8,6 +8,9 @@ import RegisterPage from "./pages/RegisterPage.jsx";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage.jsx";
 import ResetPasswordPage from "./pages/ResetPasswordPage.jsx";
 import AdminDashboard from "./pages/AdminDashboard";
+import CreatePublication from "./pages/CreatePublication.jsx";
+import ProfilPage from "./pages/ProfilPage.jsx";
+import ReglagesPage from "./pages/ReglagesPage.jsx";
 
 function App() {
   return (
@@ -19,6 +22,9 @@ function App() {
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
       <Route path="/admin" element={<PrivateRoute adminOnly={true}><AdminDashboard /></PrivateRoute>} />
+      <Route path="/create-publication" element={<PrivateRoute><CreatePublication /></PrivateRoute>} />
+      <Route path="/profil" element={<PrivateRoute><ProfilPage /></PrivateRoute>} />
+      <Route path="/reglages" element={<ReglagesPage />} />
     </Routes>
   );
 }

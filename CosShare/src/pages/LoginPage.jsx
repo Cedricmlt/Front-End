@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import AuthService from "../services/AuthService";
 import { useNavigate } from "react-router-dom";
 import { Form, Button, Container, Row, Col, Card } from "react-bootstrap";
+import Footer from "../components/Footer";
 
 const LoginPage = () => {
   const [email, setEmail] = useState("");
@@ -29,13 +30,19 @@ const LoginPage = () => {
 
   return (
     <div style={{ backgroundColor: "#232F46", minHeight: "100vh" }}>
-      <div className="ParentTitleForm">
+      <div
+        className="ParentTitleForm"
+        style={{
+          textAlign: "center",
+          padding: "20px 10px 0px 10px",
+        }}
+      >
         <h1 id="TitleForm">Cos Share</h1>
         <p id="SousTitleForm">Partagez votre passion !</p>
       </div>
-      <Container id="FormLogin">
+      <Container id="FormLogin" style={{ padding: "20px 15px" }}>
         <Row className="w-100 justify-content-center">
-          <Col md={6} lg={4}>
+          <Col xs={12} sm={10} md={6} lg={4}>
             <Card className="p-4 shadow-sm">
               <h2 className="text-center mb-4">Connexion</h2>
 
@@ -67,8 +74,16 @@ const LoginPage = () => {
                 {/* Mot de passe oublié */}
                 <div className="text-end mb-3">
                   <small
+                    role="button"
+                    tabIndex={0}
+                    aria-label="Mot de passe oublié, cliquez pour réinitialiser"
                     style={{ cursor: "pointer", color: "#0d6efd" }}
                     onClick={() => navigate("/forgot-password")}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        navigate("/forgot-password");
+                      }
+                    }}
                   >
                     Mot de passe oublié ?
                   </small>
@@ -98,35 +113,7 @@ const LoginPage = () => {
         </Row>
       </Container>
 
-      {/* Pied de page */}
-      <footer
-        className="mt-auto py-3"
-        style={{ backgroundColor: "#232F46", color: "#FFFFFF" }}
-      >
-        <Container id="FooterElements">
-          <Row className="align-items-center justify-content-center flex-nowrap">
-            <Col xs="auto">
-              <p className="mb-0">© 2026 CosShare. Tous droits réservés</p>
-            </Col>
-
-            <Col xs="auto">
-              <p className="mb-0">Contact</p>
-            </Col>
-
-            <Col xs="auto">
-              <p className="mb-0">À propos</p>
-            </Col>
-
-            <Col xs="auto">
-              <p className="mb-0">Confidentialité</p>
-            </Col>
-
-            <Col xs="auto">
-              <p className="mb-0">Conditions d'utilisation</p>
-            </Col>
-          </Row>
-        </Container>
-      </footer>
+      <Footer />
     </div>
   );
 };

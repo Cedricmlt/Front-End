@@ -334,7 +334,7 @@ const AdminDashboard = () => {
             style={{
               border: "1px solid #dee2e6",
               borderRadius: "8px",
-              padding: "20px",
+              padding: "clamp(10px, 3vw, 20px)",
               marginBottom: "20px",
             }}
           >
@@ -345,53 +345,69 @@ const AdminDashboard = () => {
 
             <Row className="mb-3">
               <Col md={6}>
-                <FormControl
-                  type="text"
-                  name="email"
-                  placeholder="E-mail *"
-                  value={formData.email}
-                  onChange={handleChange}
-                  className="mb-2"
-                />
+                <Form.Group>
+                  <Form.Label htmlFor="email">E-mail *</Form.Label>
+                  <FormControl
+                    id="email"
+                    type="text"
+                    name="email"
+                    placeholder="E-mail *"
+                    value={formData.email}
+                    onChange={handleChange}
+                    className="mb-2"
+                  />
+                </Form.Group>
               </Col>
               <Col md={6}>
-                <FormControl
-                  type="text"
-                  name="pseudo"
-                  placeholder="Pseudo *"
-                  value={formData.pseudo}
-                  onChange={handleChange}
-                  className="mb-2"
-                />
+                <Form.Group>
+                  <Form.Label htmlFor="pseudo">Pseudo *</Form.Label>
+                  <FormControl
+                    id="pseudo"
+                    type="text"
+                    name="pseudo"
+                    placeholder="Pseudo *"
+                    value={formData.pseudo}
+                    onChange={handleChange}
+                    className="mb-2"
+                  />
+                </Form.Group>
               </Col>
             </Row>
 
             <Row className="mb-3">
               <Col md={6}>
-                <FormControl
-                  type="text"
-                  name="nom"
-                  placeholder="Nom"
-                  value={formData.nom}
-                  onChange={handleChange}
-                  className="mb-2"
-                />
+                <Form.Group>
+                  <Form.Label htmlFor="nom">Nom</Form.Label>
+                  <FormControl
+                    id="nom"
+                    type="text"
+                    name="nom"
+                    placeholder="Nom"
+                    value={formData.nom}
+                    onChange={handleChange}
+                    className="mb-2"
+                  />
+                </Form.Group>
               </Col>
               <Col md={6}>
-                <FormControl
-                  type="text"
-                  name="prenom"
-                  placeholder="Prénom"
-                  value={formData.prenom}
-                  onChange={handleChange}
-                  className="mb-2"
-                />
+                <Form.Group>
+                  <Form.Label htmlFor="prenom">Prénom</Form.Label>
+                  <FormControl
+                    id="prenom"
+                    type="text"
+                    name="prenom"
+                    placeholder="Prénom"
+                    value={formData.prenom}
+                    onChange={handleChange}
+                    className="mb-2"
+                  />
+                </Form.Group>
               </Col>
             </Row>
 
             {error && <p style={{ color: "red" }}>{error}</p>}
 
-            <div className="text-center">
+            <div className="d-grid d-sm-flex justify-content-sm-center">
               <Button
                 onClick={handleSearch}
                 onMouseDown={() => setPressedButton("search")}
@@ -586,11 +602,11 @@ const AdminDashboard = () => {
             style={{
               border: "1px solid #dee2e6",
               borderRadius: "8px",
-              padding: "20px",
+              padding: "clamp(10px, 3vw, 20px)",
               marginTop: "20px",
             }}
           >
-            <div className="d-flex justify-content-between align-items-center mb-3">
+            <div className="d-flex justify-content-between align-items-center gap-2 mb-3">
               <h5>Tickets de support</h5>
               <Button
                 onClick={fetchTickets}
