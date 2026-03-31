@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AuthService from "../services/AuthService";
 import { Form, Button, Container, Row, Col, Card } from "react-bootstrap";
+import Footer from "../components/Footer";
 
 const RegisterPage = () => {
   const navigate = useNavigate();
@@ -28,7 +29,7 @@ const RegisterPage = () => {
 
     try {
       await AuthService.RegisterUser(form);
-      navigate("/login"); // 👉 après inscription → login
+      navigate("/login");
     } catch (err) {
       setError("Un problème est survenu lors de l'inscription.");
     }
@@ -46,13 +47,19 @@ const RegisterPage = () => {
         flexDirection: "column",
       }}
     >
-      <div className="ParentTitleForm">
+      <div
+        className="ParentTitleForm"
+        style={{
+          textAlign: "center",
+          padding: "20px 10px 0px 10px",
+        }}
+      >
         <h1 id="TitleForm">Cos Share</h1>
         <p id="SousTitleForm">Partagez votre passion !</p>
       </div>
-      <Container>
+      <Container style={{ padding: "20px 15px" }}>
         <Row className="justify-content-center">
-          <Col md={8} lg={6}>
+          <Col xs={12} sm={10} md={8} lg={6}>
             <Card className="p-4 p-md-5 shadow-lg">
               <h2 className="text-center mb-4">Inscription</h2>
 
@@ -60,8 +67,9 @@ const RegisterPage = () => {
 
               <Form onSubmit={handleSubmit}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Email</Form.Label>
+                  <Form.Label htmlFor="email_connexion">Email</Form.Label>
                   <Form.Control
+                    id="email_connexion"
                     type="email"
                     name="email_connexion"
                     placeholder="email@gmail.com"
@@ -147,35 +155,7 @@ const RegisterPage = () => {
         </Row>
       </Container>
 
-      {/* Pied de page */}
-      <footer
-        className="mt-auto py-3"
-        style={{ backgroundColor: "#232F46", color: "#FFFFFF" }}
-      >
-        <Container id="FooterElements">
-          <Row className="align-items-center justify-content-between flex-nowrap">
-            <Col xs="auto">
-              <p className="mb-0">© 2026 CosShare. Tous droits réservés</p>
-            </Col>
-
-            <Col xs="auto">
-              <p className="mb-0">Contact</p>
-            </Col>
-
-            <Col xs="auto">
-              <p className="mb-0">À propos</p>
-            </Col>
-
-            <Col xs="auto">
-              <p className="mb-0">Confidentialité</p>
-            </Col>
-
-            <Col xs="auto">
-              <p className="mb-0">Conditions d'utilisation</p>
-            </Col>
-          </Row>
-        </Container>
-      </footer>
+      <Footer />
     </div>
   );
 };

@@ -3,19 +3,9 @@ import axios from "axios";
 import NavBarPrincipal from "../components/NavBar.jsx";
 import SearchBar from "../components/SearchBar.jsx";
 import PublicationCard from "../components/PublicationCard.jsx";
-import cosplayImage from "../assets/cosplayImage.jpg";
 import pastilleUser from "../assets/pastilleUser.jpg";
-import linkImage from "../assets/linkImage.webp";
-import dilucImage from "../assets/dilucImage.webp";
 import FondEcran from "../assets/FondEcran.jpg";
 import Footer from "../components/Footer.jsx";
-
-const pastillesParCard = [pastilleUser, cosplayImage];
-const carouselParCard = [
-  [pastilleUser, linkImage],
-  [cosplayImage, dilucImage],
-];
-const positions = ["center 42%", "center 15%"];
 
 const HomePage = () => {
   const [publication, setPublication] = useState([]);
@@ -23,6 +13,7 @@ const HomePage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentUserId, setCurrentUserId] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
+  const [mediasMap, setMediasMap] = useState({});
 
   useEffect(() => {
     const initUser = async () => {
@@ -37,9 +28,9 @@ const HomePage = () => {
             { headers: { Authorization: `Bearer ${token}` } },
           );
           setCurrentUser(userResponse.data.user);
-          console.log("Utilisateur récupéré :", userResponse.data); // ← pour déboguer
+          console.log("Utilisateur récupéré :", userResponse.data); 
         } catch (error) {
-          console.error("Erreur récupération utilisateur :", error); // ← pour voir l'erreur
+          console.error("Erreur récupération utilisateur :", error);
         }
       }
 
@@ -54,8 +45,47 @@ const HomePage = () => {
               },
             },
           );
-          setPublication(response.data.publication);
-          setFilteredPublications(response.data.publication);
+          const publications = response.data.publication;
+          setPublication(publications);
+          setFilteredPublications(publications);
+
+          const medias = {};
+          for (const pub of publications) {
+            const mediaRes = await axios.get(
+              `http://localhost:3000/api/media-publication/publication/${pub.id_Publication}`,
+              {
+                headers: {
+                  Authorization: `Bearer ${localStorage.getItem("token")}`,
+                },
+              },
+            );
+            medias[pub.id_Publication] = mediaRes.data.medias.map((m) => m.url);
+          }
+          setMediasMap(medias);
+
+          const usersInfo = {};
+          for (const pub of publications) {
+            const userId = pub.users_Id;
+            if (!usersInfo[userId]) {
+              const userRes = await axios.get(
+                `http://localhost:3000/api/users/${userId}`,
+                {
+                  headers: {
+                    Authorization: `Bearer ${localStorage.getItem("token")}`,
+                  },
+                },
+              );
+              usersInfo[userId] = userRes.data.user;
+            }
+          }
+
+          const updatedPublications = publications.map((pub) => ({
+            ...pub,
+            user: usersInfo[pub.users_Id],
+          }));
+
+          setPublication(updatedPublications);
+          setFilteredPublications(updatedPublications);
         } catch (error) {
           console.error("Récupération des publications impossible :", error);
         }
@@ -91,16 +121,9 @@ const HomePage = () => {
     setFilteredPublications(filtered);
   };
 
-  const getPastilleUrl = (pseudo) => {
-    if (pseudo === "RyukoCosplay") return pastilleUser;
-    if (pseudo === "AnniCosplay") return cosplayImage;
-    return pastillesParCard[0];
-  };
-
-  const getCarouselImages = (pseudo) => {
-    if (pseudo === "RyukoCosplay") return [pastilleUser, linkImage];
-    if (pseudo === "AnniCosplay") return [cosplayImage, dilucImage];
-    return carouselParCard[0];
+  const getCarouselImages = (id_Publication) => {
+    const images = mediasMap[id_Publication];
+    return images && images.length > 0 ? images : [pastilleUser];
   };
 
   return (
@@ -127,9 +150,8 @@ const HomePage = () => {
               id_Publication={pub.id_Publication}
               pseudo={pub.pseudo}
               description={pub.description}
-              pastilleUrl={getPastilleUrl(pub.pseudo)}
-              objectPosition={positions[index % positions.length]}
-              carouselImages={getCarouselImages(pub.pseudo)}
+              pastilleUrl={pub.user?.photo_profil}
+              carouselImages={getCarouselImages(pub.id_Publication)}
               id_Users={currentUserId}
               currentUser={currentUser}
               id_PublicationOwner={pub.users_Id}

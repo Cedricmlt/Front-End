@@ -74,7 +74,10 @@ const NavBarPrincipal = ({ onReset }) => {
             </NavDropdown>
 
             <NavDropdown title="Publication" id="Publication">
-              <NavDropdown.Item href="#action/3.1" id="PublicationMenu1">
+              <NavDropdown.Item
+                onClick={() => navigate("/create-publication")}
+                id="PublicationMenu1"
+              >
                 Créer une publication
               </NavDropdown.Item>
             </NavDropdown>
@@ -98,7 +101,10 @@ const NavBarPrincipal = ({ onReset }) => {
             </NavDropdown>
 
             <NavDropdown title="Mon profil" id="MonProfil">
-              <NavDropdown.Item href="#action/3.1" id="MonProfilMenu1">
+              <NavDropdown.Item
+                onClick={() => navigate("/profil")}
+                id="MonProfilMenu1"
+              >
                 Voir mon profil
               </NavDropdown.Item>
               {isAdminUser && (
@@ -109,7 +115,10 @@ const NavBarPrincipal = ({ onReset }) => {
                   {isAdmin ? "Retour CosShare" : "Espace Administrateur"}
                 </NavDropdown.Item>
               )}
-              <NavDropdown.Item href="#action/3.1" id="MonProfilMenu3">
+              <NavDropdown.Item
+                onClick={() => navigate("/reglages")}
+                id="MonProfilMenu3"
+              >
                 Reglages
               </NavDropdown.Item>
               <NavDropdown.Item
